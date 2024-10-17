@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -27,6 +28,9 @@ namespace Golf_Course.Scripts.Managers
         [SerializeField]
         private Transform dropTransform;
 
+        [SerializeField]
+        private Animator npcAnimator;
+
         [Header("NPC Adjustments")]
         [SerializeField]
         private float maxHealth = 100f;
@@ -42,6 +46,12 @@ namespace Golf_Course.Scripts.Managers
         private NPCStatus _npcStatus = NPCStatus.Stopped;
         private GolfBall _currentBall;
         private CancellationTokenSource _moveCancellationTokenSource;
+
+        [Header("Animation String Hashes")]
+        private static readonly int RunningTrigger = Animator.StringToHash("Running");
+        private static readonly int PickingUpTrigger = Animator.StringToHash("PickingUp");
+        private static readonly int PuttingDownTrigger = Animator.StringToHash("PuttingDown");
+        private static readonly int IdleTrigger = Animator.StringToHash("Idle");
 
         public void StartNpcLifeCycle()
         {
@@ -62,6 +72,7 @@ namespace Golf_Course.Scripts.Managers
                     _currentBall = npcDecisionSystem.MakeDecision(transform.position, _health);
                     if (_currentBall == null)
                     {
+                        PlayAnimation(IdleTrigger);
                         if (BallManager.Instance.GetGolfBalls().Count == 0)
                         {
                             _npcStatus = NPCStatus.Finished;
@@ -121,26 +132,59 @@ namespace Golf_Course.Scripts.Managers
 
         private async UniTask MoveToBall(GolfBall ball, CancellationToken token)
         {
+            StopAgent();
+            PlayAnimation(RunningTrigger);
+            ResumeAgent();
             npcNavMeshAgent.SetDestination(ball.BallPosition);
             await UniTask.WaitUntil(IsDestinationReached, cancellationToken: token);
         }
 
         private async UniTask MoveToGolfCart(CancellationToken token)
         {
+            StopAgent();
+            PlayAnimation(RunningTrigger);
+            ResumeAgent();
             npcNavMeshAgent.SetDestination(golfCart.position);
             await UniTask.WaitUntil(IsDestinationReached, cancellationToken: token);
         }
 
         private async UniTask PickUp(GolfBall ball, CancellationToken token)
         {
-            await UniTask.Delay(500, cancellationToken: token);
+            StopAgent();
+            PlayAnimation(PickingUpTrigger);
+            await UniTask.Delay(TimeSpan.FromSeconds(0.08f), cancellationToken: token);
             ball.OnPickUp(pickUpTransform);
+            await WaitForAnimationComplete(PickingUpTrigger, token);
+            ResumeAgent();
         }
 
         private async UniTask DropOff(GolfBall ball, CancellationToken token)
         {
-            await UniTask.Delay(500, cancellationToken: token);
+            StopAgent();
+            PlayAnimation(PuttingDownTrigger);
+            await UniTask.Delay(TimeSpan.FromSeconds(0.2f), cancellationToken: token);
             ball.OnDropOff(dropTransform);
+            await WaitForAnimationComplete(PuttingDownTrigger, token);
+            ResumeAgent();
+        }
+
+        private void PlayAnimation(int trigger)
+        {
+            npcAnimator.SetTrigger(trigger);
+        }
+
+        private async UniTask WaitForAnimationComplete(int stateHash, CancellationToken token)
+        {
+            while (npcAnimator.GetCurrentAnimatorStateInfo(0).shortNameHash != stateHash)
+            {
+                await UniTask.Yield(token);
+            }
+
+            while (npcAnimator.GetCurrentAnimatorStateInfo(0).shortNameHash == stateHash &&
+                   npcAnimator.GetCurrentAnimatorStateInfo(0).normalizedTime < 1f)
+            {
+                await UniTask.Yield(token);
+            }
         }
 
         private bool IsDestinationReached()
@@ -158,8 +202,20 @@ namespace Golf_Course.Scripts.Managers
             return !npcNavMeshAgent.hasPath || npcNavMeshAgent.velocity.sqrMagnitude == 0f;
         }
 
+        private void StopAgent()
+        {
+            npcNavMeshAgent.isStopped = true;
+            npcNavMeshAgent.ResetPath();
+        }
+
+        private void ResumeAgent()
+        {
+            npcNavMeshAgent.isStopped = false;
+        }
+
         private void OnGameFinished()
         {
+            PlayAnimation(IdleTrigger);
             Debug.Log("Finished");
         }
 

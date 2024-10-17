@@ -37,7 +37,7 @@ namespace Golf_Course.Scripts
 
         public void OnDropOff(Transform dropTransform)
         {
-            ballTransform.SetParent(dropTransform);
+            ballTransform.SetParent(null);
             ballCollider.enabled = true;
             ballRigidbody.isKinematic = false;
         }
