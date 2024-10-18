@@ -98,6 +98,8 @@ namespace Golf_Course.Scripts.UI.UIPanels
             {
                 BallManager.Instance.MaxBalls = (int) maxBallSlider.value;
             }
+            
+            ClosePanel();
         }
 
         public override void PreOpen()
