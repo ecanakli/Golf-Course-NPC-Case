@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.AI;
 using Random = UnityEngine.Random;
@@ -21,6 +22,7 @@ namespace Golf_Course.Scripts.Managers
         private Terrain terrain;
 
         private readonly List<GolfBall> _golfBalls = new();
+        private readonly Queue<GolfBall> _ballPool = new();
 
         public Action OnBallsInitialized;
 
@@ -47,7 +49,7 @@ namespace Golf_Course.Scripts.Managers
                 Debug.LogWarning("Required components are missing.");
                 return;
             }
-            
+
             ClearBalls();
             var terrainData = terrain.terrainData;
             var terrainPosition = terrain.transform.position;
@@ -70,7 +72,10 @@ namespace Golf_Course.Scripts.Managers
                     }
                 }
 
-                var golfBall = Instantiate(golfBallPrefab, hit.position, Quaternion.identity, golfBallsParentTransform);
+                var golfBall = GetOrCreateBall();
+                var ballTransform = golfBall.transform;
+                ballTransform.position = hit.position;
+                ballTransform.rotation = quaternion.identity;
                 var distanceToNpc = Vector3.Distance(hit.position, NPCController.Instance.GetNPCPosition());
                 var ballLevel = CalculateBallLevelBasedOnDistance(distanceToNpc);
                 golfBall.Initialize(ballLevel, hit.position, CalculateBallPoint(ballLevel));
@@ -81,10 +86,21 @@ namespace Golf_Course.Scripts.Managers
             OnBallsInitialized?.Invoke();
         }
 
+        private GolfBall GetOrCreateBall()
+        {
+            return _ballPool.Count > 0 ? _ballPool.Dequeue() : Instantiate(golfBallPrefab, golfBallsParentTransform);
+        }
+
         public void RemoveBall(GolfBall golfBall)
         {
-            _golfBalls.Remove(golfBall);
-            Destroy(golfBall.gameObject);
+            if (!_golfBalls.Remove(golfBall))
+            {
+                return;
+            }
+
+            golfBall.gameObject.SetActive(false);
+            golfBall.transform.SetParent(golfBallsParentTransform);
+            _ballPool.Enqueue(golfBall);
         }
 
         private BallLevel CalculateBallLevelBasedOnDistance(float distance)
@@ -96,7 +112,7 @@ namespace Golf_Course.Scripts.Managers
                 _ => BallLevel.Level3
             };
         }
-        
+
         private int CalculateBallPoint(BallLevel ballLevel)
         {
             return ballLevel switch
@@ -113,17 +129,20 @@ namespace Golf_Course.Scripts.Managers
             return _golfBalls;
         }
 
+        public void SetTotalBalls(int newTotal)
+        {
+            totalBalls = newTotal;
+        }
+
         private void ClearBalls()
         {
-            if (_golfBalls.Count <= 0)
-            {
-                return;
-            }
-
             foreach (var golfBall in _golfBalls)
             {
                 golfBall.gameObject.SetActive(false);
+                golfBall.transform.SetParent(golfBallsParentTransform);
+                _ballPool.Enqueue(golfBall);
             }
+
             _golfBalls.Clear();
         }
     }
