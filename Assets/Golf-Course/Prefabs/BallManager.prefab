@@ -48,7 +48,7 @@ MonoBehaviour:
   golfBallPrefab: {fileID: 4180822728545362937, guid: 63a3d1547dc1b084b8cfc912dc940425,
     type: 3}
   golfBallsParentTransform: {fileID: 2014413338625194317}
-  totalBalls: 200
+  totalBalls: 50
   terrain: {fileID: 0}
   ballMaterials:
   - {fileID: 2100000, guid: 81d046d016449b44da6a221b2b0f1dc2, type: 2}

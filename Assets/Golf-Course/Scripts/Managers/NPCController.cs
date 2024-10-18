@@ -31,6 +31,18 @@ namespace Golf_Course.Scripts.Managers
 
         [SerializeField]
         private float healthDecreaseRate = 1;
+        
+        public float MaxHealth
+        {
+            get => maxHealth;
+            set => maxHealth = value;
+        }
+        
+        public float HealthDecreaseRate
+        {
+            get => healthDecreaseRate;
+            set => healthDecreaseRate = value;
+        }
 
         public Action<float> OnHealthChanged;
         public Action<int> OnPointsEarned;
@@ -160,12 +172,13 @@ namespace Golf_Course.Scripts.Managers
                 {
                     continue;
                 }
-
+                
                 var ballPoints = golfBall.BallPoint;
                 var healthPercentage = currentHealth / maxHealth;
                 var dynamicPointWeight = Mathf.Lerp(1.5f, 0.5f, 1 - healthPercentage);
                 var dynamicTimeWeight = Mathf.Lerp(0.5f, 1.5f, 1 - healthPercentage);
                 var score = (ballPoints * dynamicPointWeight) - (totalTime * dynamicTimeWeight);
+
 
                 if (!(score > bestScore))
                 {
@@ -341,7 +354,7 @@ namespace Golf_Course.Scripts.Managers
             _moveCancellationTokenSource?.Cancel();
             npcNavMeshAgent.ResetPath();
         }
-
+        
         public override void OnDestroy()
         {
             base.OnDestroy();

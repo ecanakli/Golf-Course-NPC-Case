@@ -27,7 +27,7 @@ namespace Golf_Course.Scripts.UI.UIPanels
 
         private void UpdateUI(string result)
         {
-            pointText.text = _currentPoint.ToString();
+            pointText.text = $"Points:<br>{_currentPoint}";
             resultText.text = result;
         }
 
@@ -35,7 +35,7 @@ namespace Golf_Course.Scripts.UI.UIPanels
         {
             _currentPoint = 0;
             resultText.text = string.Empty;
-            pointText.text = _currentPoint.ToString();
+            pointText.text = $"Points:<br>{_currentPoint}";
         }
 
         public override void PreOpen()

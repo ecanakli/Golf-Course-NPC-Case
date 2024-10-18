@@ -42,7 +42,7 @@ namespace Golf_Course.Scripts.UI
         private void UpdateHealthUI(float currentHealth)
         {
             currentHealth = Mathf.Max(0, Mathf.FloorToInt(currentHealth));
-            healthText.text = $"Health: {currentHealth}";
+            healthText.text = $"{currentHealth}";
         }
 
         private void UpdatePointUI(int earnedPoints)
@@ -55,14 +55,14 @@ namespace Golf_Course.Scripts.UI
         private void ResetUI()
         {
             _currentPoint = 0;
-            pointText.text = $"Points: {_currentPoint}";
-            healthText.text = "Health: ";
+            pointText.text = $"{_currentPoint}";
+            healthText.text = "";
         }
 
         private void IncreasePointsOverTime(int startValue, int endValue, float duration)
         {
-            DOVirtual.Int(startValue, endValue, duration, value => { pointText.text = $"Points: {value}"; })
-                .OnComplete(() => { pointText.text = $"Points: {_currentPoint}"; });
+            DOVirtual.Int(startValue, endValue, duration, value => { pointText.text = $"{value}"; })
+                .OnComplete(() => { pointText.text = $"{_currentPoint}"; });
         }
     }
 }

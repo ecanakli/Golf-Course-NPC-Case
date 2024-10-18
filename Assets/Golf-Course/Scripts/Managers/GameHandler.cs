@@ -1,6 +1,8 @@
 using System;
 using Golf_Course.Scripts.UI;
 using Golf_Course.Scripts.UI.UIPanels;
+using UnityEngine;
+using Screen = UnityEngine.Device.Screen;
 
 namespace Golf_Course.Scripts.Managers
 {
@@ -12,6 +14,12 @@ namespace Golf_Course.Scripts.Managers
         private void Start()
         {
             StartGame();
+            SetResolution();
+        }
+
+        private void SetResolution()
+        {
+            Screen.SetResolution(1920, 1080, FullScreenMode.Windowed);
         }
         
         private void OnEnable()

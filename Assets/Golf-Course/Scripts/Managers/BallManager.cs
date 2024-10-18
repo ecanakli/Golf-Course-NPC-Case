@@ -16,7 +16,7 @@ namespace Golf_Course.Scripts.Managers
         private Transform golfBallsParentTransform;
 
         [SerializeField]
-        private int totalBalls = 10;
+        private int totalBalls = 50;
 
         [SerializeField]
         private Terrain terrain;
@@ -27,6 +27,12 @@ namespace Golf_Course.Scripts.Managers
         private readonly List<GolfBall> _golfBalls = new();
         private readonly Queue<GolfBall> _ballPool = new();
 
+        public int MaxBalls
+        {
+            get => totalBalls;
+            set => totalBalls = value;
+        }
+        
         public Action OnBallsInitialized;
 
         private void OnEnable()
@@ -130,11 +136,6 @@ namespace Golf_Course.Scripts.Managers
         public List<GolfBall> GetGolfBalls()
         {
             return _golfBalls;
-        }
-
-        public void SetTotalBalls(int newTotal)
-        {
-            totalBalls = newTotal;
         }
 
         private void ClearBalls()
