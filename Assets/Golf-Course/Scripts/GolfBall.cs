@@ -1,4 +1,3 @@
-using Golf_Course.Scripts.Managers;
 using UnityEngine;
 
 namespace Golf_Course.Scripts
@@ -7,7 +6,7 @@ namespace Golf_Course.Scripts
     {
         public BallLevel BallLevel { get; private set; }
         public Vector3 BallPosition { get; private set; }
-        public int BallPoints { get; private set; }
+        public int BallPoint { get; private set; }
 
         [SerializeField]
         private Collider ballCollider;
@@ -18,12 +17,12 @@ namespace Golf_Course.Scripts
         [SerializeField]
         private Transform ballTransform;
 
-        public void Initialize(BallLevel ballLevel, Vector3 ballPosition)
+        public void Initialize(BallLevel ballLevel, Vector3 ballPosition, int ballPoint)
         {
             BallLevel = ballLevel;
             BallPosition = ballPosition;
             transform.position = BallPosition;
-            BallPoints = PointManager.Instance.GetPoints(BallLevel);
+            BallPoint = ballPoint;
         }
 
         public void OnPickUp(Transform pickUpTransform)
