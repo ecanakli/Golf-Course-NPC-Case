@@ -1,5 +1,6 @@
 # Golf-Course-NPC-Case
 Unity 3D Developer Demo Task
+The reference resolution for canvases is 1920x1080.
 
 <b>Overview of the Game Mechanics</b>
 The game is set on a terrain map where an NPC character is tasked with collecting golf balls scattered across the map. The game revolves around the NPC navigating through the environment using NavMesh-based movement, ensuring valid paths for the NPC. Golf balls are distributed randomly at the start of the game, and their positions are validated to be accessible via NavMesh.
