@@ -7,6 +7,10 @@ using Random = UnityEngine.Random;
 
 namespace Golf_Course.Scripts.Managers
 {
+    /// <summary>
+    /// Manages the lifecycle and behavior of golf balls within the game.
+    /// Handles initialization, pooling, and recycling of balls.
+    /// </summary>
     public class BallManager : Singleton<BallManager>
     {
         [SerializeField]
@@ -20,7 +24,7 @@ namespace Golf_Course.Scripts.Managers
 
         [SerializeField]
         private Terrain terrain;
-        
+
         [SerializeField]
         private Material[] ballMaterials;
 
@@ -32,7 +36,7 @@ namespace Golf_Course.Scripts.Managers
             get => totalBalls;
             set => totalBalls = value;
         }
-        
+
         public Action OnBallsInitialized;
 
         private void OnEnable()
@@ -51,6 +55,10 @@ namespace Golf_Course.Scripts.Managers
             }
         }
 
+        /// <summary>
+        /// Initializes golf balls at random positions on the terrain,
+        /// ensuring each position is valid on the NavMesh.
+        /// </summary>
         private void InitializeBalls()
         {
             if (terrain == null || golfBallPrefab == null || NPCController.Instance == null)
@@ -68,6 +76,7 @@ namespace Golf_Course.Scripts.Managers
                 var hit = new NavMeshHit();
                 var validPosition = false;
 
+                // Loop until a valid position on the NavMesh is found.
                 while (!validPosition)
                 {
                     var randomX = Random.Range(terrainPosition.x, terrainPosition.x + terrainData.size.x);
@@ -87,7 +96,8 @@ namespace Golf_Course.Scripts.Managers
                 ballTransform.rotation = quaternion.identity;
                 var distanceToNpc = Vector3.Distance(hit.position, NPCController.Instance.GetNPCPosition());
                 var ballLevel = CalculateBallLevelBasedOnDistance(distanceToNpc);
-                golfBall.Initialize(ballLevel, hit.position, CalculateBallPoint(ballLevel), ballMaterials[(int)ballLevel]);
+                golfBall.Initialize(ballLevel, hit.position, CalculateBallPoint(ballLevel),
+                    ballMaterials[(int) ballLevel]);
                 golfBall.gameObject.SetActive(true);
                 _golfBalls.Add(golfBall);
             }
@@ -95,11 +105,17 @@ namespace Golf_Course.Scripts.Managers
             OnBallsInitialized?.Invoke();
         }
 
+        /// <summary>
+        /// Retrieves a golf ball from the pool if available; otherwise, creates a new one.
+        /// </summary>
         private GolfBall GetOrCreateBall()
         {
             return _ballPool.Count > 0 ? _ballPool.Dequeue() : Instantiate(golfBallPrefab, golfBallsParentTransform);
         }
 
+        /// <summary>
+        /// Removes a golf ball from the active list and returns it to the pool.
+        /// </summary>
         public void RemoveBall(GolfBall golfBall)
         {
             if (!_golfBalls.Remove(golfBall))
@@ -122,7 +138,7 @@ namespace Golf_Course.Scripts.Managers
             };
         }
 
-        private int CalculateBallPoint(BallLevel ballLevel)
+        public int CalculateBallPoint(BallLevel ballLevel)
         {
             return ballLevel switch
             {

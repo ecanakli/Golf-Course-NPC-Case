@@ -7,6 +7,9 @@ using UnityEngine.UI;
 
 namespace Golf_Course.Scripts.Managers
 {
+    /// <summary>
+    /// Controls the NPC behavior, including movement, health management, and interaction with golf balls.
+    /// </summary>
     public class NPCController : Singleton<NPCController>
     {
         [Header("NPC References")]
@@ -31,13 +34,13 @@ namespace Golf_Course.Scripts.Managers
 
         [SerializeField]
         private float healthDecreaseRate = 1;
-        
+
         public float MaxHealth
         {
             get => maxHealth;
             set => maxHealth = value;
         }
-        
+
         public float HealthDecreaseRate
         {
             get => healthDecreaseRate;
@@ -83,6 +86,9 @@ namespace Golf_Course.Scripts.Managers
             _npcStartPosition = transform.position;
         }
 
+        /// <summary>
+        /// Starts the NPC life cycle when balls are initialized.
+        /// </summary>
         private void StartNpcLifeCycle()
         {
             _moveCancellationTokenSource?.Cancel();
@@ -104,6 +110,9 @@ namespace Golf_Course.Scripts.Managers
             npcHealthBarSlider.value = _health;
         }
 
+        /// <summary>
+        /// Main NPC loop that controls the NPC behavior and state transitions.
+        /// </summary>
         private async UniTask StartNPCLoop(CancellationToken token)
         {
             while (_health > 0 && !token.IsCancellationRequested && _npcStatus != NPCStatus.Finished)
@@ -152,6 +161,10 @@ namespace Golf_Course.Scripts.Managers
             OnSuccessful?.Invoke();
         }
 
+        /// <summary>
+        /// Decision-making algorithm to determine the most optimal ball to collect,
+        /// dynamically balancing between score and distance based on the NPC's current health.
+        /// </summary>
         private GolfBall MakeDecision(Vector3 npcPosition, float currentHealth)
         {
             GolfBall bestBall = null;
@@ -160,6 +173,7 @@ namespace Golf_Course.Scripts.Managers
 
             foreach (var golfBall in BallManager.Instance.GetGolfBalls())
             {
+                // Calculate the distance to the ball and to the cart
                 var distanceFromNpcToBall = CalculateNavMeshDistance(npcPosition, golfBall.BallPosition);
                 var timeToReachBall = distanceFromNpcToBall / npcNavMeshAgent.speed;
 
@@ -168,18 +182,24 @@ namespace Golf_Course.Scripts.Managers
                 var timeToReachGolfCart = distanceFromBallToCart / npcNavMeshAgent.speed;
 
                 var totalTime = timeToReachBall + timeToReachGolfCart;
+                // If the total time exceeds remaining time, skip this ball
                 if (totalTime > remainingTime)
                 {
                     continue;
                 }
-                
+
                 var ballPoints = golfBall.BallPoint;
                 var healthPercentage = currentHealth / maxHealth;
-                var dynamicPointWeight = Mathf.Lerp(1.5f, 0.5f, 1 - healthPercentage);
-                var dynamicTimeWeight = Mathf.Lerp(0.5f, 1.5f, 1 - healthPercentage);
+                // Adjust weight dynamically based on current health
+                var dynamicPointWeight =
+                    Mathf.Lerp(1.5f, 0.5f, 1 - healthPercentage); // High health → prioritize points
+                var dynamicTimeWeight =
+                    Mathf.Lerp(0.5f, 1.5f, 1 - healthPercentage); // Low health → prioritize distance
+
+                // Calculate the final score for the ball
                 var score = (ballPoints * dynamicPointWeight) - (totalTime * dynamicTimeWeight);
 
-
+                // Choose the ball with the highest score
                 if (!(score > bestScore))
                 {
                     continue;
@@ -192,11 +212,15 @@ namespace Golf_Course.Scripts.Managers
             return bestBall;
         }
 
+
         private float CalculateRemainingTime(float currentHealth)
         {
             return currentHealth / healthDecreaseRate;
         }
 
+        /// <summary>
+        /// Calculates the distance along the NavMesh between two points.
+        /// </summary>
         private float CalculateNavMeshDistance(Vector3 startPosition, Vector3 targetPosition)
         {
             var path = new NavMeshPath();
@@ -354,7 +378,7 @@ namespace Golf_Course.Scripts.Managers
             _moveCancellationTokenSource?.Cancel();
             npcNavMeshAgent.ResetPath();
         }
-        
+
         public override void OnDestroy()
         {
             base.OnDestroy();
