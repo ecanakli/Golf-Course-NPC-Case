@@ -20,6 +20,9 @@ namespace Golf_Course.Scripts.Managers
 
         [SerializeField]
         private Terrain terrain;
+        
+        [SerializeField]
+        private Material[] ballMaterials;
 
         private readonly List<GolfBall> _golfBalls = new();
         private readonly Queue<GolfBall> _ballPool = new();
@@ -78,7 +81,7 @@ namespace Golf_Course.Scripts.Managers
                 ballTransform.rotation = quaternion.identity;
                 var distanceToNpc = Vector3.Distance(hit.position, NPCController.Instance.GetNPCPosition());
                 var ballLevel = CalculateBallLevelBasedOnDistance(distanceToNpc);
-                golfBall.Initialize(ballLevel, hit.position, CalculateBallPoint(ballLevel));
+                golfBall.Initialize(ballLevel, hit.position, CalculateBallPoint(ballLevel), ballMaterials[(int)ballLevel]);
                 golfBall.gameObject.SetActive(true);
                 _golfBalls.Add(golfBall);
             }
@@ -98,7 +101,7 @@ namespace Golf_Course.Scripts.Managers
                 return;
             }
 
-            golfBall.gameObject.SetActive(false);
+            golfBall.ResetBall();
             golfBall.transform.SetParent(golfBallsParentTransform);
             _ballPool.Enqueue(golfBall);
         }
@@ -138,7 +141,7 @@ namespace Golf_Course.Scripts.Managers
         {
             foreach (var golfBall in _golfBalls)
             {
-                golfBall.gameObject.SetActive(false);
+                golfBall.ResetBall();
                 golfBall.transform.SetParent(golfBallsParentTransform);
                 _ballPool.Enqueue(golfBall);
             }
