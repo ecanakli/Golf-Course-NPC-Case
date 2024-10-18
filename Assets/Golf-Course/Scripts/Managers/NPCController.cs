@@ -3,6 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UI;
 
 namespace Golf_Course.Scripts.Managers
 {
@@ -12,22 +13,15 @@ namespace Golf_Course.Scripts.Managers
         [SerializeField]
         private NavMeshAgent npcNavMeshAgent;
 
-        public NavMeshAgent NpcNavMeshAgent => npcNavMeshAgent;
+        [SerializeField]
+        private Slider npcHealthBarSlider;
 
         [SerializeField]
-        private NPCDecisionSystem npcDecisionSystem;
-
-        [SerializeField]
-        private Transform golfCart;
-
-        public Transform GolfCart => golfCart;
+        private Transform golfCartTransform;
 
         [SerializeField]
         private Transform pickUpTransform;
-
-        [SerializeField]
-        private Transform dropTransform;
-
+        
         [SerializeField]
         private Animator npcAnimator;
 
@@ -35,32 +29,66 @@ namespace Golf_Course.Scripts.Managers
         [SerializeField]
         private float maxHealth = 100f;
 
-        public float MaxHealth => maxHealth;
-
         [SerializeField]
         private float healthDecreaseRate = 1;
 
-        public float HealthDecreaseRate => healthDecreaseRate;
+        public Action<float> OnHealthChanged;
+        public Action<int> OnPointsEarned;
+        public Action OnSuccessful;
+        public Action OnFail;
 
         private float _health;
         private NPCStatus _npcStatus = NPCStatus.Stopped;
         private GolfBall _currentBall;
+        private Vector3 _npcStartPosition;
         private CancellationTokenSource _moveCancellationTokenSource;
-
+        
         [Header("Animation String Hashes")]
         private static readonly int RunningTrigger = Animator.StringToHash("Running");
         private static readonly int PickingUpTrigger = Animator.StringToHash("PickingUp");
         private static readonly int PuttingDownTrigger = Animator.StringToHash("PuttingDown");
         private static readonly int IdleTrigger = Animator.StringToHash("Idle");
-
-        public void StartNpcLifeCycle()
+        
+        private void OnEnable()
         {
-            _health = maxHealth;
+            if (BallManager.Instance != null)
+            {
+                BallManager.Instance.OnBallsInitialized += StartNpcLifeCycle;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (BallManager.Instance != null)
+            {
+                BallManager.Instance.OnBallsInitialized -= StartNpcLifeCycle;
+            }
+        }
+
+        private void Awake()
+        {
+            _npcStartPosition = transform.position;
+        }
+
+        private void StartNpcLifeCycle()
+        {
             _moveCancellationTokenSource?.Cancel();
             _moveCancellationTokenSource = new CancellationTokenSource();
             var moveToken = _moveCancellationTokenSource.Token;
+
+            _npcStatus = NPCStatus.Stopped;
+            _currentBall = null;
+            transform.position = _npcStartPosition;
+            SetHealthValues();
             StartReducingHealth(moveToken).Forget();
             StartNPCLoop(moveToken).Forget();
+        }
+
+        private void SetHealthValues()
+        {
+            _health = maxHealth;
+            npcHealthBarSlider.maxValue = maxHealth;
+            npcHealthBarSlider.value = _health;
         }
 
         private async UniTask StartNPCLoop(CancellationToken token)
@@ -69,13 +97,14 @@ namespace Golf_Course.Scripts.Managers
             {
                 if (_npcStatus == NPCStatus.Stopped)
                 {
-                    _currentBall = npcDecisionSystem.MakeDecision(transform.position, _health);
+                    _currentBall = MakeDecision(transform.position, _health);
                     if (_currentBall == null)
                     {
                         PlayAnimation(IdleTrigger);
                         if (BallManager.Instance.GetGolfBalls().Count == 0)
                         {
                             _npcStatus = NPCStatus.Finished;
+                            OnSuccessful?.Invoke();
                             break;
                         }
 
@@ -107,7 +136,68 @@ namespace Golf_Course.Scripts.Managers
             }
 
             _npcStatus = NPCStatus.Finished;
-            OnGameFinished();
+            OnSuccessful?.Invoke();
+        }
+
+        private GolfBall MakeDecision(Vector3 npcPosition, float currentHealth)
+        {
+            GolfBall bestBall = null;
+            var bestScore = float.MinValue;
+            var remainingTime = CalculateRemainingTime(currentHealth);
+
+            foreach (var golfBall in BallManager.Instance.GetGolfBalls())
+            {
+                var distanceFromNpcToBall = CalculateNavMeshDistance(npcPosition, golfBall.BallPosition);
+                var timeToReachBall = distanceFromNpcToBall / npcNavMeshAgent.speed;
+
+                var distanceFromBallToCart =
+                    CalculateNavMeshDistance(golfBall.BallPosition, golfCartTransform.position);
+                var timeToReachGolfCart = distanceFromBallToCart / npcNavMeshAgent.speed;
+
+                var totalTime = timeToReachBall + timeToReachGolfCart;
+                if (totalTime > remainingTime)
+                {
+                    continue;
+                }
+
+                var ballPoints = golfBall.BallPoint;
+                var healthPercentage = currentHealth / maxHealth;
+                var dynamicPointWeight = Mathf.Lerp(1.5f, 0.5f, 1 - healthPercentage);
+                var dynamicTimeWeight = Mathf.Lerp(0.5f, 1.5f, 1 - healthPercentage);
+                var score = (ballPoints * dynamicPointWeight) - (totalTime * dynamicTimeWeight);
+
+                if (!(score > bestScore))
+                {
+                    continue;
+                }
+
+                bestScore = score;
+                bestBall = golfBall;
+            }
+
+            return bestBall;
+        }
+
+        private float CalculateRemainingTime(float currentHealth)
+        {
+            return currentHealth / healthDecreaseRate;
+        }
+
+        private float CalculateNavMeshDistance(Vector3 startPosition, Vector3 targetPosition)
+        {
+            var path = new NavMeshPath();
+            if (!NavMesh.CalculatePath(startPosition, targetPosition, NavMesh.AllAreas, path))
+            {
+                return float.MaxValue;
+            }
+
+            var totalDistance = 0f;
+            for (var i = 1; i < path.corners.Length; i++)
+            {
+                totalDistance += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+            }
+
+            return totalDistance;
         }
 
         public Vector3 GetNPCPosition()
@@ -120,9 +210,13 @@ namespace Golf_Course.Scripts.Managers
             while (_health > 0 && !token.IsCancellationRequested)
             {
                 _health -= healthDecreaseRate * Time.deltaTime;
+                OnHealthChanged?.Invoke(_health);
+                npcHealthBarSlider.value = _health;
                 if (_health <= 0)
                 {
                     _npcStatus = NPCStatus.Finished;
+                    CancelLoop();
+                    OnFail?.Invoke();
                     break;
                 }
 
@@ -140,11 +234,11 @@ namespace Golf_Course.Scripts.Managers
         }
 
         private async UniTask MoveToGolfCart(CancellationToken token)
-        {
+        { 
             StopAgent();
             PlayAnimation(RunningTrigger);
             ResumeAgent();
-            npcNavMeshAgent.SetDestination(golfCart.position);
+            npcNavMeshAgent.SetDestination(golfCartTransform.position);
             await UniTask.WaitUntil(IsDestinationReached, cancellationToken: token);
         }
 
@@ -163,8 +257,9 @@ namespace Golf_Course.Scripts.Managers
             StopAgent();
             PlayAnimation(PuttingDownTrigger);
             await UniTask.Delay(TimeSpan.FromSeconds(0.2f), cancellationToken: token);
-            ball.OnDropOff(dropTransform);
+            ball.OnDropOff(golfCartTransform);
             await WaitForAnimationComplete(PuttingDownTrigger, token);
+            OnPointsEarned?.Invoke(ball.BallPoint);
             ResumeAgent();
         }
 
@@ -186,7 +281,7 @@ namespace Golf_Course.Scripts.Managers
                 await UniTask.Yield(token);
             }
         }
-
+        
         private bool IsDestinationReached()
         {
             if (npcNavMeshAgent.pathPending)
@@ -213,10 +308,11 @@ namespace Golf_Course.Scripts.Managers
             npcNavMeshAgent.isStopped = false;
         }
 
-        private void OnGameFinished()
+        private void CancelLoop()
         {
             PlayAnimation(IdleTrigger);
-            Debug.Log("Finished");
+            _moveCancellationTokenSource?.Cancel();
+            npcNavMeshAgent.ResetPath();
         }
 
         public override void OnDestroy()
