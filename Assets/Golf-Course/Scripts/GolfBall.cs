@@ -16,13 +16,17 @@ namespace Golf_Course.Scripts
 
         [SerializeField]
         private Transform ballTransform;
+        
+        [SerializeField]
+        private Renderer  ballRenderer;
 
-        public void Initialize(BallLevel ballLevel, Vector3 ballPosition, int ballPoint)
+        public void Initialize(BallLevel ballLevel, Vector3 ballPosition, int ballPoint, Material material)
         {
             BallLevel = ballLevel;
             BallPosition = ballPosition;
-            transform.position = BallPosition;
             BallPoint = ballPoint;
+            ballRenderer.material = material;
+            transform.position = BallPosition;
         }
 
         public void OnPickUp(Transform pickUpTransform)
@@ -36,9 +40,16 @@ namespace Golf_Course.Scripts
 
         public void OnDropOff(Transform dropTransform)
         {
-            ballTransform.SetParent(null);
+            ballTransform.SetParent(dropTransform);
             ballCollider.enabled = true;
             ballRigidbody.isKinematic = false;
+        }
+
+        public void ResetBall()
+        {
+            gameObject.SetActive(false);
+            ballCollider.enabled = true;
+            ballRigidbody.isKinematic = true;
         }
     }
 }
