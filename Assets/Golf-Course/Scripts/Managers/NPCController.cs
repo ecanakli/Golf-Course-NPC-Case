@@ -21,7 +21,7 @@ namespace Golf_Course.Scripts.Managers
 
         [SerializeField]
         private Transform pickUpTransform;
-        
+
         [SerializeField]
         private Animator npcAnimator;
 
@@ -42,13 +42,14 @@ namespace Golf_Course.Scripts.Managers
         private GolfBall _currentBall;
         private Vector3 _npcStartPosition;
         private CancellationTokenSource _moveCancellationTokenSource;
-        
+
         [Header("Animation String Hashes")]
         private static readonly int RunningTrigger = Animator.StringToHash("Running");
+
         private static readonly int PickingUpTrigger = Animator.StringToHash("PickingUp");
         private static readonly int PuttingDownTrigger = Animator.StringToHash("PuttingDown");
         private static readonly int IdleTrigger = Animator.StringToHash("Idle");
-        
+
         private void OnEnable()
         {
             if (BallManager.Instance != null)
@@ -228,15 +229,17 @@ namespace Golf_Course.Scripts.Managers
         {
             StopAgent();
             PlayAnimation(RunningTrigger);
+            await RotateTowards(ball.BallPosition, token);
             ResumeAgent();
             npcNavMeshAgent.SetDestination(ball.BallPosition);
             await UniTask.WaitUntil(IsDestinationReached, cancellationToken: token);
         }
 
         private async UniTask MoveToGolfCart(CancellationToken token)
-        { 
+        {
             StopAgent();
             PlayAnimation(RunningTrigger);
+            await RotateTowards(golfCartTransform.position, token);
             ResumeAgent();
             npcNavMeshAgent.SetDestination(golfCartTransform.position);
             await UniTask.WaitUntil(IsDestinationReached, cancellationToken: token);
@@ -263,6 +266,30 @@ namespace Golf_Course.Scripts.Managers
             ResumeAgent();
         }
 
+        private async UniTask RotateTowards(Vector3 targetPosition, CancellationToken token)
+        {
+            var direction = (targetPosition - transform.position).normalized;
+            direction.y = 0;
+
+            if (direction == Vector3.zero)
+            {
+                return;
+            }
+
+            var targetRotation = Quaternion.LookRotation(direction);
+
+            while (Quaternion.Angle(transform.rotation, targetRotation) > 0.1f)
+            {
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation,
+                    targetRotation,
+                    180 * Time.deltaTime
+                );
+
+                await UniTask.Yield(token);
+            }
+        }
+
         private void PlayAnimation(int trigger)
         {
             npcAnimator.SetTrigger(trigger);
@@ -281,7 +308,7 @@ namespace Golf_Course.Scripts.Managers
                 await UniTask.Yield(token);
             }
         }
-        
+
         private bool IsDestinationReached()
         {
             if (npcNavMeshAgent.pathPending)
