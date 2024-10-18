@@ -1,3 +1,6 @@
+Build and Gameplay movie link:
+https://drive.google.com/drive/folders/1ywEf4DNx5mnz4WpfNwYPpOvzJPFsr_Tb?usp=sharing
+
 # Golf-Course-NPC-Case
 Unity 3D Developer Demo Task
 The reference resolution for canvases is 1920x1080.
